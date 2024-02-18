@@ -1,1 +1,1 @@
-# sign-message-trezor
+# Sign Message with Trezor

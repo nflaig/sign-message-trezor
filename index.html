@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign Message with Trezor</title>
+    <script src="https://connect.trezor.io/9/trezor-connect.js"></script>
+    <script>
+      TrezorConnect.init({
+        connectSrc: "https://connect.trezor.io/9/",
+        popup: true,
+        transports: ["WebUsbTransport"],
+        manifest: {
+          email: "",
+          appUrl: "",
+        },
+      });
+
+      async function signEthereumMessage(message) {
+        const accountIndex = document.getElementById("accountIndex").value || "0";
+        const path = `m/44'/60'/0'/0/${accountIndex}`;
+        try {
+          const result = await TrezorConnect.ethereumSignMessage({
+            path: path,
+            message: message,
+            hex: false,
+          });
+
+          console.log(result);
+
+          if (result.success) {
+            console.log("Signature:", result.payload.signature);
+            document.getElementById("signatureResult").value = JSON.stringify({
+              address: result.payload.address,
+              msg: message,
+              sig: `0x${result.payload.signature}`,
+              version: "2",
+            });
+          } else {
+            // Check if the error is "Manifest not set" and if we should retry
+            if (result.payload.code === "Init_ManifestMissing") {
+              console.log("Retrying due to manifest error...");
+              setTimeout(() => signEthereumMessage(message), 1000);
+            } else {
+              console.error("Error:", result.payload.error);
+              document.getElementById("signatureResult").value = "Error: " + result.payload.error;
+            }
+          }
+        } catch (error) {
+          console.error("Exception:", error);
+          document.getElementById("signatureResult").value = "Exception: " + error;
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Sign Message with Trezor</h2>
+    Account Index:
+    <input type="number" id="accountIndex" placeholder="Account Index (default: 0)" value="0" min="0" /><br /><br />
+    Message to Sign:<br />
+    <textarea id="message" rows="20" cols="100" placeholder="Enter your message here"></textarea><br />
+    <button onclick="signEthereumMessage(document.getElementById('message').value)">Sign Message</button><br /><br />
+    Signature Result:<br />
+    <textarea id="signatureResult" rows="20" cols="100" readonly></textarea>
+  </body>
+</html>
